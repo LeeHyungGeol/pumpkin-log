@@ -19,6 +19,8 @@ tasks.withType<Test> {
 }
 
 dependencies {
+    api("org.slf4j:slf4j-api:2.0.9")
+
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.17.0")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.17.0")
 

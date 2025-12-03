@@ -8,3 +8,10 @@ pumpkin:
       enabled: true
     file:
       enabled: true
+    exclude-paths:
+      - /actuator/**
+      - /favicon.ico
+    level:
+      default: INFO
+      client4xx: WARN
+      server5xx: ERROR

@@ -9,7 +9,10 @@ data class PumpkinLogProperties(
     @NestedConfigurationProperty
     val console: ConsoleProperties = ConsoleProperties(),
     @NestedConfigurationProperty
-    val file: FileProperties = FileProperties()
+    val file: FileProperties = FileProperties(),
+    val excludePaths: List<String> = emptyList(),
+    @NestedConfigurationProperty
+    val level: LevelProperties = LevelProperties()
 )
 
 data class ConsoleProperties(
@@ -18,5 +21,18 @@ data class ConsoleProperties(
 
 data class FileProperties(
     val enabled: Boolean = true,
-    val path: String? = null
+    val path: String? = null,
+    val async: AsyncProperties = AsyncProperties()
+)
+
+data class AsyncProperties(
+    val enabled: Boolean = false,
+    val bufferSize: Int = 1000,
+    val batchSize: Int = 100
+)
+
+data class LevelProperties(
+    val default: String = "INFO",
+    val client4xx: String = "WARN",
+    val server5xx: String = "ERROR"
 )

@@ -1,5 +1,6 @@
 package com.pumpkin.log.spring.mvc.config
 
+import com.pumpkin.log.appender.AsyncFileLogAppender
 import com.pumpkin.log.appender.CompositeLogAppender
 import com.pumpkin.log.appender.ConsoleLogAppender
 import com.pumpkin.log.appender.FileLogAppender
@@ -7,6 +8,7 @@ import com.pumpkin.log.appender.LogAppender
 import com.pumpkin.log.logger.AccessLogger
 import com.pumpkin.log.spring.mvc.filter.AccessLogFilter
 import org.springframework.boot.autoconfigure.AutoConfiguration
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication.Type
@@ -28,12 +30,24 @@ class PumpkinLogAutoConfiguration {
 
     @Bean
     @ConditionalOnProperty(prefix = "pumpkin.log.file", name = ["enabled"], havingValue = "true", matchIfMissing = true)
+    @ConditionalOnMissingBean(AsyncFileLogAppender::class)
     fun fileLogAppender(properties: PumpkinLogProperties): FileLogAppender {
         return if (properties.file.path != null) {
             FileLogAppender(properties.file.path)
         } else {
             FileLogAppender()
         }
+    }
+
+    @Bean(destroyMethod = "shutdown")
+    @ConditionalOnProperty(prefix = "pumpkin.log.file.async", name = ["enabled"], havingValue = "true")
+    fun asyncFileLogAppender(properties: PumpkinLogProperties): AsyncFileLogAppender {
+        val filePath = properties.file.path ?: "/tmp/log.${ProcessHandle.current().pid()}.jsonl"
+        return AsyncFileLogAppender(
+            filePath = filePath,
+            bufferSize = properties.file.async.bufferSize,
+            batchSize = properties.file.async.batchSize,
+        )
     }
 
     @Bean
@@ -44,7 +58,7 @@ class PumpkinLogAutoConfiguration {
 
     @Bean
     @ConditionalOnProperty(prefix = "pumpkin.log", name = ["enabled"], havingValue = "true", matchIfMissing = true)
-    fun accessLogFilter(accessLogger: AccessLogger): AccessLogFilter {
-        return AccessLogFilter(accessLogger)
+    fun accessLogFilter(accessLogger: AccessLogger, properties: PumpkinLogProperties): AccessLogFilter {
+        return AccessLogFilter(accessLogger, properties)
     }
 }

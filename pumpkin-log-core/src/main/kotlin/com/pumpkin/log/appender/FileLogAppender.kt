@@ -9,11 +9,11 @@ class FileLogAppender(
     private val filePath: String = "/tmp/log.${ProcessHandle.current().pid()}.jsonl"
 ) : LogAppender {
 
+    private val objectMapper = ObjectMapperFactory.instance
+
     override fun append(log: HttpLog) {
-        val json = ObjectMapperFactory.instance.writeValueAsString(log)
         FileWriter(File(filePath), true).use { writer ->
-            writer.write(json)
-            writer.write("\n")
+            writer.appendLine(objectMapper.writeValueAsString(log))
         }
     }
 }
