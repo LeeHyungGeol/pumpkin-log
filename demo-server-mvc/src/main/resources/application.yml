@@ -1,0 +1,10 @@
+server:
+  port: 8080
+
+pumpkin:
+  log:
+    enabled: true
+    console:
+      enabled: true
+    file:
+      enabled: true
