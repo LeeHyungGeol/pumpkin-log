@@ -29,18 +29,13 @@ class AsyncFileLogAppender(
     val queueSize: Int get() = queue.size
 
     var onDropped: ((HttpLog) -> Unit)? = null
-
-    private val debugMode: Boolean
-        get() = System.getProperty("pumpkin.log.debug") == "true"
+    var onError: ((Throwable) -> Unit)? = null
 
     init {
         worker = Thread({ processQueue() }, "async-file-log-worker").apply {
             isDaemon = true
             uncaughtExceptionHandler = Thread.UncaughtExceptionHandler { _, e ->
-                if (debugMode) {
-                    System.err.println("[AsyncFileLogAppender] Worker thread exception: ${e.message}")
-                    e.printStackTrace(System.err)
-                }
+                onError?.invoke(e)
             }
             start()
         }
@@ -53,37 +48,49 @@ class AsyncFileLogAppender(
         if (!queue.offer(log)) {
             _droppedCount.incrementAndGet()
             onDropped?.invoke(log)
-            if (debugMode) {
-                System.err.println("[AsyncFileLogAppender] Queue full, log dropped: ${log.httpPath}")
-            }
         }
     }
 
     private fun processQueue() {
         val batch = mutableListOf<HttpLog>()
 
-        FileWriter(filePath, true).buffered().use { writer ->
-            while (running.get() || queue.isNotEmpty()) {
-                queue.drainTo(batch, batchSize)
+        try {
+            FileWriter(filePath, true).buffered().use { writer ->
+                while (running.get() || queue.isNotEmpty()) {
+                    try {
+                        queue.drainTo(batch, batchSize)
 
-                if (batch.isEmpty()) {
-                    val log = queue.poll(100, TimeUnit.MILLISECONDS)
-                    if (log != null) {
-                        batch.add(log)
-                        queue.drainTo(batch, batchSize - 1)
+                        if (batch.isEmpty()) {
+                            val log = queue.poll(100, TimeUnit.MILLISECONDS)
+                            if (log != null) {
+                                batch.add(log)
+                                queue.drainTo(batch, batchSize - 1)
+                            }
+                        }
+
+                        if (batch.isNotEmpty()) {
+                            batch.forEach { log ->
+                                writer.appendLine(objectMapper.writeValueAsString(log))
+                            }
+                            _writtenCount.addAndGet(batch.size.toLong())
+                            batch.clear()
+                            writer.flush()
+                        }
+                    } catch (e: InterruptedException) {
+                        return
+                    } catch (e: Exception) {
+                        onError?.invoke(e)
+                        if (batch.isNotEmpty()) {
+                            _droppedCount.addAndGet(batch.size.toLong())
+                            batch.clear()
+                        }
+                        Thread.sleep(100)
                     }
                 }
-
-                if (batch.isNotEmpty()) {
-                    batch.forEach { log ->
-                        writer.appendLine(objectMapper.writeValueAsString(log))
-                    }
-                    _writtenCount.addAndGet(batch.size.toLong())
-                    batch.clear()
-                    writer.flush()
-                }
+                writer.flush()
             }
-            writer.flush()
+        } catch (e: Exception) {
+            onError?.invoke(e)
         }
     }
 
