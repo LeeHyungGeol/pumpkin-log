@@ -8,7 +8,7 @@ import com.pumpkin.log.appender.LogAppender
 import com.pumpkin.log.logger.AccessLogger
 import com.pumpkin.log.spring.mvc.filter.AccessLogFilter
 import org.springframework.boot.autoconfigure.AutoConfiguration
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication.Type
@@ -29,8 +29,7 @@ class PumpkinLogAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnProperty(prefix = "pumpkin.log.file", name = ["enabled"], havingValue = "true", matchIfMissing = true)
-    @ConditionalOnMissingBean(AsyncFileLogAppender::class)
+    @ConditionalOnExpression("\${pumpkin.log.file.enabled:true} && !\${pumpkin.log.file.async.enabled:false}")
     fun fileLogAppender(properties: PumpkinLogProperties): FileLogAppender {
         return FileLogAppender(properties.file.path)
     }
