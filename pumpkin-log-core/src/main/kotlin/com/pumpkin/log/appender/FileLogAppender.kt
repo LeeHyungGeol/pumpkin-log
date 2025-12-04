@@ -1,18 +1,20 @@
 package com.pumpkin.log.appender
 
 import com.pumpkin.log.model.HttpLog
+import com.pumpkin.log.util.FilePathResolver
 import com.pumpkin.log.util.ObjectMapperFactory
 import java.io.File
 import java.io.FileWriter
 
 class FileLogAppender(
-    private val filePath: String = "/tmp/log.${ProcessHandle.current().pid()}.jsonl"
+    filePath: String? = null
 ) : LogAppender {
 
+    private val resolvedFilePath: String = FilePathResolver.resolve(filePath)
     private val objectMapper = ObjectMapperFactory.instance
 
     override fun append(log: HttpLog) {
-        FileWriter(File(filePath), true).use { writer ->
+        FileWriter(File(resolvedFilePath), true).use { writer ->
             writer.appendLine(objectMapper.writeValueAsString(log))
         }
     }

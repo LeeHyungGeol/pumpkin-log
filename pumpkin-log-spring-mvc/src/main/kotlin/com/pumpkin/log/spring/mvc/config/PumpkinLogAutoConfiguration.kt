@@ -32,19 +32,14 @@ class PumpkinLogAutoConfiguration {
     @ConditionalOnProperty(prefix = "pumpkin.log.file", name = ["enabled"], havingValue = "true", matchIfMissing = true)
     @ConditionalOnMissingBean(AsyncFileLogAppender::class)
     fun fileLogAppender(properties: PumpkinLogProperties): FileLogAppender {
-        return if (properties.file.path != null) {
-            FileLogAppender(properties.file.path)
-        } else {
-            FileLogAppender()
-        }
+        return FileLogAppender(properties.file.path)
     }
 
     @Bean(destroyMethod = "shutdown")
     @ConditionalOnProperty(prefix = "pumpkin.log.file.async", name = ["enabled"], havingValue = "true")
     fun asyncFileLogAppender(properties: PumpkinLogProperties): AsyncFileLogAppender {
-        val filePath = properties.file.path ?: "/tmp/log.${ProcessHandle.current().pid()}.jsonl"
         return AsyncFileLogAppender(
-            filePath = filePath,
+            filePath = properties.file.path,
             bufferSize = properties.file.async.bufferSize,
             batchSize = properties.file.async.batchSize,
         )

@@ -1,6 +1,7 @@
 package com.pumpkin.log.appender
 
 import com.pumpkin.log.model.HttpLog
+import com.pumpkin.log.util.FilePathResolver
 import com.pumpkin.log.util.ObjectMapperFactory
 import java.io.Closeable
 import java.io.FileWriter
@@ -10,11 +11,12 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
 class AsyncFileLogAppender(
-    private val filePath: String = "/tmp/log.${ProcessHandle.current().pid()}.jsonl",
+    filePath: String? = null,
     private val bufferSize: Int = 1000,
     private val batchSize: Int = 100,
 ) : LogAppender, Closeable {
 
+    private val resolvedFilePath: String = FilePathResolver.resolve(filePath)
     private val queue = LinkedBlockingQueue<HttpLog>(bufferSize)
     private val running = AtomicBoolean(true)
     private val objectMapper = ObjectMapperFactory.instance
@@ -55,7 +57,7 @@ class AsyncFileLogAppender(
         val batch = mutableListOf<HttpLog>()
 
         try {
-            FileWriter(filePath, true).buffered().use { writer ->
+            FileWriter(resolvedFilePath, true).buffered().use { writer ->
                 while (running.get() || queue.isNotEmpty()) {
                     try {
                         queue.drainTo(batch, batchSize)
