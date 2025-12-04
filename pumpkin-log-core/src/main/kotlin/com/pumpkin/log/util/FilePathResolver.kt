@@ -15,7 +15,7 @@ object FilePathResolver {
 
         val dotIndex = basePath.lastIndexOf('.')
         return if (dotIndex > 0) {
-            "${basePath.substring(0, dotIndex)}.$pid${basePath.substring(dotIndex)}"
+            "${basePath.take(dotIndex)}.$pid${basePath.substring(dotIndex)}"
         } else {
             "$basePath.$pid"
         }

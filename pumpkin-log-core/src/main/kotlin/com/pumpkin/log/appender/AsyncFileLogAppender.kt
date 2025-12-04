@@ -4,6 +4,7 @@ import com.pumpkin.log.model.HttpLog
 import com.pumpkin.log.util.FilePathResolver
 import com.pumpkin.log.util.ObjectMapperFactory
 import java.io.Closeable
+import java.io.File
 import java.io.FileWriter
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
@@ -34,6 +35,12 @@ class AsyncFileLogAppender(
     var onError: ((Throwable) -> Unit)? = null
 
     init {
+        val file = File(resolvedFilePath)
+        val parentDir = file.parentFile
+        require(parentDir == null || parentDir.exists()) {
+            "Directory does not exist: ${parentDir?.absolutePath}"
+        }
+
         worker = Thread({ processQueue() }, "async-file-log-worker").apply {
             isDaemon = true
             uncaughtExceptionHandler = Thread.UncaughtExceptionHandler { _, e ->

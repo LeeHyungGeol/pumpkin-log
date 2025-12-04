@@ -1,0 +1,77 @@
+{
+  "groups": [
+    {
+      "name": "pumpkin.log",
+      "type": "com.pumpkin.log.spring.mvc.config.PumpkinLogProperties",
+      "description": "Pumpkin Log SDK configuration properties."
+    },
+    {
+      "name": "pumpkin.log.console",
+      "type": "com.pumpkin.log.spring.mvc.config.ConsoleProperties",
+      "sourceType": "com.pumpkin.log.spring.mvc.config.PumpkinLogProperties",
+      "description": "Console appender configuration."
+    },
+    {
+      "name": "pumpkin.log.file",
+      "type": "com.pumpkin.log.spring.mvc.config.FileProperties",
+      "sourceType": "com.pumpkin.log.spring.mvc.config.PumpkinLogProperties",
+      "description": "File appender configuration."
+    },
+    {
+      "name": "pumpkin.log.file.async",
+      "type": "com.pumpkin.log.spring.mvc.config.AsyncProperties",
+      "sourceType": "com.pumpkin.log.spring.mvc.config.FileProperties",
+      "description": "Async file appender configuration."
+    }
+  ],
+  "properties": [
+    {
+      "name": "pumpkin.log.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Enable or disable Pumpkin Log SDK.",
+      "defaultValue": true
+    },
+    {
+      "name": "pumpkin.log.console.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Enable or disable console log output.",
+      "defaultValue": true
+    },
+    {
+      "name": "pumpkin.log.file.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Enable or disable file log output.",
+      "defaultValue": true
+    },
+    {
+      "name": "pumpkin.log.file.path",
+      "type": "java.lang.String",
+      "description": "File path for log output. Use {pid} placeholder for process ID.",
+      "defaultValue": "/tmp/log.{pid}.jsonl"
+    },
+    {
+      "name": "pumpkin.log.file.async.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Enable async file appender instead of sync file appender.",
+      "defaultValue": false
+    },
+    {
+      "name": "pumpkin.log.file.async.buffer-size",
+      "type": "java.lang.Integer",
+      "description": "Queue buffer size for async file appender.",
+      "defaultValue": 1000
+    },
+    {
+      "name": "pumpkin.log.file.async.batch-size",
+      "type": "java.lang.Integer",
+      "description": "Batch size for async file appender writes.",
+      "defaultValue": 100
+    },
+    {
+      "name": "pumpkin.log.exclude-paths",
+      "type": "java.util.List<java.lang.String>",
+      "description": "List of path patterns to exclude from logging. Supports Ant-style patterns."
+    }
+  ],
+  "hints": []
+}

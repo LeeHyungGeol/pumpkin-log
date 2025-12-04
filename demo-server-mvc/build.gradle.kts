@@ -31,4 +31,5 @@ dependencies {
 
     // 테스트
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.awaitility:awaitility-kotlin:4.2.0")
 }
