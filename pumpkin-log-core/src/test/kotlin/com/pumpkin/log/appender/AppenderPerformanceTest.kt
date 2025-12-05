@@ -258,4 +258,161 @@ class AppenderPerformanceTest {
             |Improvement: ${"%.2f".format(improvement)}%
         """.trimMargin())
     }
+
+    @Test
+    fun `producer scaling test - thread count impact on throughput`() {
+        println("=== Producer Scaling Test ===")
+        println("Purpose: Verify AsyncFileLogAppender handles 100+ concurrent requests in microservice environment\n")
+
+        val threadCounts = listOf(10, 50, 100, 200, 500)
+        val logsPerThread = 10_000
+        val bufferSize = 500_000
+
+        println("%-10s | %-12s | %-10s | %-15s | %-10s".format(
+            "Threads", "Total Logs", "Elapsed", "Throughput", "Dropped"
+        ))
+        println("-".repeat(65))
+
+        threadCounts.forEach { threadCount ->
+            val totalLogs = threadCount * logsPerThread
+            val logFile = tempDir.resolve("scaling-$threadCount.jsonl").toString()
+            val appender = AsyncFileLogAppender(
+                filePath = logFile,
+                bufferSize = bufferSize,
+                batchSize = 500
+            )
+            val executor = Executors.newFixedThreadPool(threadCount)
+            val latch = CountDownLatch(threadCount)
+
+            val elapsed = measureTimeMillis {
+                repeat(threadCount) { threadIdx ->
+                    executor.submit {
+                        try {
+                            repeat(logsPerThread) { i ->
+                                appender.append(createTestLog(threadIdx * logsPerThread + i))
+                            }
+                        } finally {
+                            latch.countDown()
+                        }
+                    }
+                }
+                latch.await()
+                appender.shutdown()
+            }
+
+            executor.shutdown()
+            val throughput = totalLogs * 1000.0 / elapsed
+
+            println("%-10d | %-12d | %-10s | %-15s | %-10d".format(
+                threadCount,
+                totalLogs,
+                "${elapsed}ms",
+                "${"%.0f".format(throughput)} logs/s",
+                appender.droppedCount
+            ))
+
+            // cleanup
+            val actualFilePath = FilePathResolver.resolve(logFile)
+            File(actualFilePath).delete()
+        }
+    }
+
+    @Test
+    fun `buffer and batch size optimization test`() {
+        println("=== Buffer/Batch Size Optimization Test ===")
+        println("Purpose: Find optimal bufferSize/batchSize combination\n")
+
+        val bufferSizes = listOf(1_000, 10_000, 50_000, 100_000)
+        val batchSizes = listOf(10, 50, 100, 500, 1_000)
+        val logCount = 100_000
+
+        println("%-12s | %-10s | %-10s | %-15s | %-10s".format(
+            "BufferSize", "BatchSize", "Elapsed", "Throughput", "Dropped"
+        ))
+        println("-".repeat(65))
+
+        bufferSizes.forEach { bufferSize ->
+            batchSizes.forEach { batchSize ->
+                val logFile = tempDir.resolve("optimize-$bufferSize-$batchSize.jsonl").toString()
+                val appender = AsyncFileLogAppender(
+                    filePath = logFile,
+                    bufferSize = bufferSize,
+                    batchSize = batchSize
+                )
+
+                val elapsed = measureTimeMillis {
+                    repeat(logCount) { i ->
+                        appender.append(createTestLog(i))
+                    }
+                    appender.shutdown()
+                }
+
+                val throughput = logCount * 1000.0 / elapsed
+
+                println("%-12d | %-10d | %-10s | %-15s | %-10d".format(
+                    bufferSize,
+                    batchSize,
+                    "${elapsed}ms",
+                    "${"%.0f".format(throughput)} logs/s",
+                    appender.droppedCount
+                ))
+
+                // cleanup
+                val actualFilePath = FilePathResolver.resolve(logFile)
+                File(actualFilePath).delete()
+            }
+        }
+    }
+
+    @Test
+    fun `memory pressure test - heap usage under load`() {
+        println("=== Memory Pressure Test ===")
+        println("Purpose: Track heap memory usage during large log processing, identify OOM threshold\n")
+
+        val logCounts = listOf(100_000, 500_000, 1_000_000, 2_000_000)
+        val runtime = Runtime.getRuntime()
+
+        println("%-12s | %-15s | %-15s | %-15s | %-15s".format(
+            "Logs", "Heap Before", "Heap After", "Heap Delta", "Throughput"
+        ))
+        println("-".repeat(80))
+
+        logCounts.forEach { logCount ->
+            // Force GC before measurement
+            System.gc()
+            Thread.sleep(100)
+
+            val heapBefore = runtime.totalMemory() - runtime.freeMemory()
+
+            val logFile = tempDir.resolve("memory-$logCount.jsonl").toString()
+            val appender = AsyncFileLogAppender(
+                filePath = logFile,
+                bufferSize = logCount.coerceAtMost(500_000),
+                batchSize = 1000
+            )
+
+            val elapsed = measureTimeMillis {
+                repeat(logCount) { i ->
+                    appender.append(createTestLog(i))
+                }
+                appender.shutdown()
+            }
+
+            val heapAfter = runtime.totalMemory() - runtime.freeMemory()
+            val heapDelta = heapAfter - heapBefore
+            val throughput = logCount * 1000.0 / elapsed
+
+            println("%-12d | %-15s | %-15s | %-15s | %-15s".format(
+                logCount,
+                "${heapBefore / 1024 / 1024}MB",
+                "${heapAfter / 1024 / 1024}MB",
+                "${heapDelta / 1024 / 1024}MB",
+                "${"%.0f".format(throughput)} logs/s"
+            ))
+
+            // cleanup
+            val actualFilePath = FilePathResolver.resolve(logFile)
+            File(actualFilePath).delete()
+        }
+    }
 }

@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 class AsyncFileLogAppender(
     filePath: String? = null,
-    private val bufferSize: Int = 1000,
+    private val bufferSize: Int = 10_000,
     private val batchSize: Int = 100,
 ) : LogAppender, Closeable {
 
@@ -29,7 +29,6 @@ class AsyncFileLogAppender(
 
     val droppedCount: Long get() = _droppedCount.get()
     val writtenCount: Long get() = _writtenCount.get()
-    val queueSize: Int get() = queue.size
 
     var onDropped: ((HttpLog) -> Unit)? = null
     var onError: ((Throwable) -> Unit)? = null
