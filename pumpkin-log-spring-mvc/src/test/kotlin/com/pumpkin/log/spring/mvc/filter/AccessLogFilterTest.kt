@@ -269,7 +269,7 @@ class AccessLogFilterTest {
     }
 
     @Test
-    fun `should not log for excluded paths with wildcard pattern`() {
+    fun `should not log for excluded paths with double wildcard pattern`() {
         val properties = PumpkinLogProperties(excludePaths = listOf("/actuator/**"))
         val filter = AccessLogFilter(accessLogger, properties)
         val request = MockHttpServletRequest("GET", "/actuator/health")
@@ -278,6 +278,73 @@ class AccessLogFilterTest {
         filter.doFilter(request, response, filterChain)
 
         verify(exactly = 1) { filterChain.doFilter(request, response) }
+        verify(exactly = 0) {
+            accessLogger.log(
+                userAgent = any(),
+                method = any(),
+                path = any(),
+                query = any(),
+                statusCode = any(),
+                duration = any(),
+                extra = any()
+            )
+        }
+    }
+
+    @Test
+    fun `should not log for excluded paths with single wildcard pattern`() {
+        val properties = PumpkinLogProperties(excludePaths = listOf("/static/*"))
+        val filter = AccessLogFilter(accessLogger, properties)
+        val request = MockHttpServletRequest("GET", "/static/image.png")
+        val response = MockHttpServletResponse()
+
+        filter.doFilter(request, response, filterChain)
+
+        verify(exactly = 1) { filterChain.doFilter(request, response) }
+        verify(exactly = 0) {
+            accessLogger.log(
+                userAgent = any(),
+                method = any(),
+                path = any(),
+                query = any(),
+                statusCode = any(),
+                duration = any(),
+                extra = any()
+            )
+        }
+    }
+
+    @Test
+    fun `single wildcard should not match nested paths`() {
+        val properties = PumpkinLogProperties(excludePaths = listOf("/static/*"))
+        val filter = AccessLogFilter(accessLogger, properties)
+        val request = MockHttpServletRequest("GET", "/static/images/logo.png")
+        val response = MockHttpServletResponse()
+
+        filter.doFilter(request, response, filterChain)
+
+        verify(exactly = 1) {
+            accessLogger.log(
+                userAgent = any(),
+                method = any(),
+                path = "/static/images/logo.png",
+                query = any(),
+                statusCode = any(),
+                duration = any(),
+                extra = any()
+            )
+        }
+    }
+
+    @Test
+    fun `double wildcard should match nested paths`() {
+        val properties = PumpkinLogProperties(excludePaths = listOf("/static/**"))
+        val filter = AccessLogFilter(accessLogger, properties)
+        val request = MockHttpServletRequest("GET", "/static/images/logo.png")
+        val response = MockHttpServletResponse()
+
+        filter.doFilter(request, response, filterChain)
+
         verify(exactly = 0) {
             accessLogger.log(
                 userAgent = any(),

@@ -121,13 +121,44 @@ class AsyncFileLogAppenderTest {
     }
 
     @Test
-    fun `should throw exception when directory does not exist`() {
+    fun `should create directory automatically when createDirectories is true`() {
+        val nestedPath = tempDir.resolve("nested/deep/dir/log.{pid}.jsonl").toString()
+        val appender = AsyncFileLogAppender(filePath = nestedPath, createDirectories = true)
+
+        appender.append(createTestLog())
+
+        val actualFile = tempDir.resolve("nested/deep/dir/log.$pid.jsonl").toFile()
+        await.atMost(Duration.ofSeconds(2)).untilAsserted {
+            assertThat(actualFile).exists()
+        }
+
+        appender.shutdown()
+    }
+
+    @Test
+    fun `should throw exception when directory not exists and createDirectories is false`() {
         val invalidPath = tempDir.resolve("non-existent-dir/fail.jsonl").toString()
 
         assertThatThrownBy {
-            AsyncFileLogAppender(filePath = invalidPath)
+            AsyncFileLogAppender(filePath = invalidPath, createDirectories = false)
         }.isInstanceOf(IllegalArgumentException::class.java)
             .hasMessageContaining("Directory does not exist")
+    }
+
+    @Test
+    fun `should throw exception when directory creation fails`() {
+        val readOnlyDir = tempDir.resolve("readonly").toFile()
+        readOnlyDir.mkdir()
+        readOnlyDir.setWritable(false)
+
+        val nestedPath = "${readOnlyDir.absolutePath}/nested/log.{pid}.jsonl"
+
+        assertThatThrownBy {
+            AsyncFileLogAppender(filePath = nestedPath, createDirectories = true)
+        }.isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("Failed to create directory")
+
+        readOnlyDir.setWritable(true)
     }
 
     @Test

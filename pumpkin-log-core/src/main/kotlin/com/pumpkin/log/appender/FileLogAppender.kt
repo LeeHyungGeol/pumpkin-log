@@ -3,14 +3,33 @@ package com.pumpkin.log.appender
 import com.pumpkin.log.model.HttpLog
 import com.pumpkin.log.util.FilePathResolver
 import com.pumpkin.log.util.ObjectMapperFactory
+import java.io.File
 import java.io.FileWriter
 
 class FileLogAppender(
-    filePath: String? = null
+    filePath: String? = null,
+    private val createDirectories: Boolean = true
 ) : LogAppender {
 
     private val resolvedFilePath: String = FilePathResolver.resolve(filePath)
     private val objectMapper = ObjectMapperFactory.instance
+
+    init {
+        validateAndPrepareDirectory()
+    }
+
+    private fun validateAndPrepareDirectory() {
+        val parentDir = File(resolvedFilePath).parentFile ?: return
+        if (parentDir.exists()) return
+
+        if (createDirectories) {
+            require(parentDir.mkdirs()) {
+                "Failed to create directory: ${parentDir.absolutePath}"
+            }
+        } else {
+            throw IllegalArgumentException("Directory does not exist: ${parentDir.absolutePath}")
+        }
+    }
 
     override fun append(log: HttpLog) {
         FileWriter(resolvedFilePath, true).use { writer ->

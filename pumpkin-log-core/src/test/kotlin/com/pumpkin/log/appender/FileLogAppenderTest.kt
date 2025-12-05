@@ -4,6 +4,7 @@ import com.pumpkin.log.model.HttpLog
 import com.pumpkin.log.util.FilePathResolver
 import com.pumpkin.log.util.ObjectMapperFactory
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
@@ -213,6 +214,51 @@ class FileLogAppenderTest {
 
         // cleanup
         defaultFile.delete()
+    }
+
+    @Test
+    fun `should create directory automatically when createDirectories is true`() {
+        // given
+        val nestedPath = tempDir.resolve("nested/deep/dir/log.{pid}.jsonl").toString()
+        val appender = FileLogAppender(nestedPath, createDirectories = true)
+
+        // when
+        appender.append(createTestLog())
+
+        // then
+        val resolvedPath = FilePathResolver.resolve(nestedPath)
+        assertThat(File(resolvedPath)).exists()
+    }
+
+    @Test
+    fun `should throw exception when directory not exists and createDirectories is false`() {
+        // given
+        val nonExistentPath = tempDir.resolve("nonexistent/log.{pid}.jsonl").toString()
+
+        // when & then
+        assertThatThrownBy {
+            FileLogAppender(nonExistentPath, createDirectories = false)
+        }.isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("Directory does not exist")
+    }
+
+    @Test
+    fun `should throw exception when directory creation fails`() {
+        // given - 읽기 전용 디렉토리 생성
+        val readOnlyDir = tempDir.resolve("readonly").toFile()
+        readOnlyDir.mkdir()
+        readOnlyDir.setWritable(false)
+
+        val nestedPath = "${readOnlyDir.absolutePath}/nested/log.{pid}.jsonl"
+
+        // when & then
+        assertThatThrownBy {
+            FileLogAppender(nestedPath, createDirectories = true)
+        }.isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("Failed to create directory")
+
+        // cleanup
+        readOnlyDir.setWritable(true)
     }
 
     private fun createTestLog(

@@ -15,6 +15,7 @@ class AsyncFileLogAppender(
     filePath: String? = null,
     private val bufferSize: Int = DEFAULT_BUFFER_SIZE,
     private val batchSize: Int = DEFAULT_BATCH_SIZE,
+    private val createDirectories: Boolean = true
 ) : LogAppender, Closeable {
 
     private val resolvedFilePath: String = FilePathResolver.resolve(filePath)
@@ -34,17 +35,22 @@ class AsyncFileLogAppender(
     var onError: ((Throwable) -> Unit)? = null
 
     init {
-        validateDirectory()
+        validateAndPrepareDirectory()
         worker = createWorkerThread()
         shutdownHook = Thread({ shutdown() }, SHUTDOWN_HOOK_THREAD_NAME)
         Runtime.getRuntime().addShutdownHook(shutdownHook)
     }
 
-    private fun validateDirectory() {
-        File(resolvedFilePath).parentFile?.let { parentDir ->
-            require(parentDir.exists()) {
-                "Directory does not exist: ${parentDir.absolutePath}"
+    private fun validateAndPrepareDirectory() {
+        val parentDir = File(resolvedFilePath).parentFile ?: return
+        if (parentDir.exists()) return
+
+        if (createDirectories) {
+            require(parentDir.mkdirs()) {
+                "Failed to create directory: ${parentDir.absolutePath}"
             }
+        } else {
+            throw IllegalArgumentException("Directory does not exist: ${parentDir.absolutePath}")
         }
     }
 
