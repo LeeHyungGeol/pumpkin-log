@@ -1,6 +1,7 @@
 package com.pumpkin.log.appender
 
 import com.pumpkin.log.model.HttpLog
+import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import io.mockk.verifyOrder
@@ -90,6 +91,23 @@ class CompositeLogAppenderTest {
 
         verify(exactly = 1) { appender1.append(log) }
         verify(exactly = 1) { appender2.append(log) }
+    }
+
+    @Test
+    fun `should continue dispatching when one appender throws exception`() {
+        val appender1 = mockk<LogAppender>(relaxed = true)
+        val appender2 = mockk<LogAppender>()
+        val appender3 = mockk<LogAppender>(relaxed = true)
+        val composite = CompositeLogAppender(appender1, appender2, appender3)
+        val log = createTestLog()
+
+        every { appender2.append(any()) } throws RuntimeException("Disk full")
+
+        composite.append(log)
+
+        verify(exactly = 1) { appender1.append(log) }
+        verify(exactly = 1) { appender2.append(log) }
+        verify(exactly = 1) { appender3.append(log) }
     }
 
     private fun createTestLog(path: String = "/test") = HttpLog(

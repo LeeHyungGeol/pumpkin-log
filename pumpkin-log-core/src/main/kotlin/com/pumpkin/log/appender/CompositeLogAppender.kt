@@ -9,6 +9,8 @@ class CompositeLogAppender(
     constructor(vararg appenders: LogAppender) : this(appenders.toList())
 
     override fun append(log: HttpLog) {
-        appenders.forEach { it.append(log) }
+        appenders.forEach { appender ->
+            runCatching { appender.append(log) }
+        }
     }
 }
