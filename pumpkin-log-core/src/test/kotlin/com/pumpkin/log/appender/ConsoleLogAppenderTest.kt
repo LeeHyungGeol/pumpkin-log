@@ -98,6 +98,43 @@ class ConsoleLogAppenderTest {
         assertThat(parsed.get("extra").get("userId").asText()).isEqualTo("12345")
     }
 
+    @Test
+    fun `should not include extra field when empty`() {
+        val appender = ConsoleLogAppender()
+        val log = HttpLog(
+            userAgent = "TestAgent",
+            duration = 100,
+            httpStatusCode = 200,
+            httpMethod = "GET",
+            httpPath = "/test",
+            extra = emptyMap()
+        )
+
+        appender.append(log)
+
+        val output = outputStream.toString()
+        val parsed = objectMapper.readTree(output)
+        assertThat(parsed.has("extra")).isFalse()
+        assertThat(output).doesNotContain("\"extra\"")
+    }
+
+    @Test
+    fun `should not include extra field by default`() {
+        val appender = ConsoleLogAppender()
+        val log = HttpLog(
+            userAgent = "TestAgent",
+            duration = 100,
+            httpStatusCode = 200,
+            httpMethod = "GET",
+            httpPath = "/test"
+        )
+
+        appender.append(log)
+
+        val output = outputStream.toString()
+        assertThat(output).doesNotContain("\"extra\"")
+    }
+
     private fun createTestLog() = HttpLog(
         userAgent = "TestAgent",
         duration = 100,
