@@ -395,3 +395,130 @@ pumpkin-log/
 - Build: Gradle 8.x (Kotlin DSL)
 - Framework: Spring Boot 3.4.12
 - Test: JUnit 5, MockK, AssertJ, Awaitility
+
+## 개발자 가이드
+
+### 빌드
+
+```bash
+# 전체 빌드 (테스트 포함)
+./gradlew build
+
+# 테스트 제외 빌드
+./gradlew build -x test
+
+# 특정 모듈만 빌드
+./gradlew :pumpkin-log-core:build
+./gradlew :pumpkin-log-spring-mvc:build
+
+# clean 후 빌드
+./gradlew clean build
+```
+
+### 테스트
+
+```bash
+# 전체 테스트
+./gradlew test
+
+# 특정 모듈 테스트
+./gradlew :pumpkin-log-core:test
+./gradlew :pumpkin-log-spring-mvc:test
+
+# 특정 테스트 클래스 실행
+./gradlew :pumpkin-log-core:test --tests "*.AsyncFileLogAppenderTest"
+
+# 성능 테스트 (수동 실행)
+./gradlew :pumpkin-log-core:test --tests "*.AppenderPerformanceTest" -Dtest.single=AppenderPerformanceTest
+
+# 테스트 리포트 확인
+open pumpkin-log-core/build/reports/tests/test/index.html
+open pumpkin-log-spring-mvc/build/reports/tests/test/index.html
+```
+
+### 데모 서버 실행
+
+```bash
+# WebMVC 데모 서버 (기본 포트: 8080)
+./gradlew :demo-server-mvc:bootRun
+
+# 백그라운드 실행
+./gradlew :demo-server-mvc:bootRun &
+
+# 요청 테스트
+curl http://localhost:8080/health
+curl http://localhost:8080/api/users/123
+curl -X POST http://localhost:8080/api/orders
+
+# 로그 파일 확인
+cat /tmp/log.*.jsonl | jq .
+tail -f /tmp/log.*.jsonl
+```
+
+### 모듈별 역할
+
+| 모듈 | 역할 | Spring 의존성 |
+|------|------|--------------|
+| `pumpkin-log-core` | 핵심 로깅 로직 (HttpLog, Appender, Logger) | X |
+| `pumpkin-log-spring-mvc` | Spring WebMVC Filter, AutoConfiguration | O |
+| `pumpkin-log-spring-webflux` | Spring WebFlux Filter (미구현) | O |
+| `demo-server-mvc` | WebMVC 데모 서버 | O |
+| `demo-server-webflux` | WebFlux 데모 서버 (미구현) | O |
+
+### 새 Appender 추가하기
+
+`LogAppender` 인터페이스를 구현하여 커스텀 출력 대상을 추가할 수 있습니다:
+
+```kotlin
+// 1. LogAppender 인터페이스 구현
+class KafkaLogAppender(
+    private val kafkaTemplate: KafkaTemplate<String, String>
+) : LogAppender {
+
+    private val objectMapper = ObjectMapperFactory.instance
+
+    override fun append(log: HttpLog) {
+        val json = objectMapper.writeValueAsString(log)
+        kafkaTemplate.send("access-logs", json)
+    }
+}
+
+// 2. CompositeLogAppender에 추가
+val appender = CompositeLogAppender(
+    ConsoleLogAppender(),
+    FileLogAppender(),
+    KafkaLogAppender(kafkaTemplate)
+)
+```
+
+### 테스트 작성 가이드
+
+```kotlin
+// Given-When-Then 패턴 사용
+@Test
+fun `should log http request with extra data`() {
+    // Given
+    LogContextHolder.init()
+    LogContextHolder.put("userId", "123")
+
+    // When
+    accessLogger.log(httpLog)
+
+    // Then
+    assertThat(capturedLog.extra).containsEntry("userId", "123")
+
+    // Cleanup
+    LogContextHolder.clear()
+}
+
+// MockK 사용 예시
+@Test
+fun `should dispatch to all appenders`() {
+    val mockAppender = mockk<LogAppender>(relaxed = true)
+    val logger = AccessLogger(mockAppender)
+
+    logger.log(testLog)
+
+    verify(exactly = 1) { mockAppender.append(testLog) }
+}
+```
