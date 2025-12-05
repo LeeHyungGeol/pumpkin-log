@@ -125,19 +125,37 @@ pumpkin:
 
 ## 아키텍처
 
-### 모듈 구조
+### 모듈 의존성 다이어그램
 
 ```
-pumpkin-log/
-├── pumpkin-log-core/           # 순수 Kotlin 핵심 모듈 (Spring 의존 X)
-├── pumpkin-log-spring-mvc/     # Spring WebMVC 통합 모듈
-└── demo-server-mvc/            # 데모 서버
-```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              pumpkin-log                                     │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────────┐     ┌─────────────────────┐                       │
+│  │   demo-server-mvc   │     │ demo-server-webflux │   (데모/테스트용)      │
+│  └──────────┬──────────┘     └──────────┬──────────┘                       │
+│             │                           │                                   │
+│             ▼                           ▼                                   │
+│  ┌─────────────────────┐     ┌─────────────────────┐                       │
+│  │pumpkin-log-spring-  │     │pumpkin-log-spring-  │   (Spring 통합)       │
+│  │        mvc          │     │      webflux        │                       │
+│  └──────────┬──────────┘     └──────────┬──────────┘                       │
+│             │                           │                                   │
+│             └───────────┬───────────────┘                                   │
+│                         ▼                                                   │
+│            ┌────────────────────────┐                                       │
+│            │    pumpkin-log-core    │   (순수 Kotlin, Spring 의존 X)        │
+│            │                        │                                       │
+│            │  - HttpLog             │                                       │
+│            │  - LogAppender         │                                       │
+│            │  - AccessLogger        │                                       │
+│            │  - LogContextHolder    │                                       │
+│            └────────────────────────┘                                       │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
 
-### 의존성 방향
-
-```
-demo-server-mvc → pumpkin-log-spring-mvc → pumpkin-log-core
+의존성 방향: demo-server → spring-mvc/webflux → core (단방향)
 ```
 
 ### 요청 처리 흐름
@@ -197,6 +215,46 @@ demo-server-mvc → pumpkin-log-spring-mvc → pumpkin-log-core
 | LogContextHolder | core | ThreadLocal 기반 extra 저장 |
 | AccessLogger | core | 로그 생성 + Appender dispatch |
 | AccessLogFilter | spring-mvc | 요청 가로채기 + 경로 제외 |
+
+### 동기 vs 비동기 파일 로깅 다이어그램
+
+**동기 모드 (FileLogAppender)**
+```
+┌─────────────┐     ┌─────────────────┐     ┌──────────────┐
+│ HTTP Thread │────▶│ FileLogAppender │────▶│  File I/O    │
+│  (Request)  │     │                 │     │   (Block)    │
+└─────────────┘     └─────────────────┘     └──────────────┘
+       │                    │                      │
+       │◀───────────────────┴──────────────────────┘
+       │                 응답 지연 발생
+       ▼
+   Response
+
+특징: 로그 유실 없음, 파일 I/O 만큼 응답 지연
+```
+
+**비동기 모드 (AsyncFileLogAppender)**
+```
+┌─────────────┐     ┌─────────────────────────────────────────────────────────┐
+│ HTTP Thread │────▶│              AsyncFileLogAppender                        │
+│  (Request)  │     │  ┌─────────────────────┐    ┌─────────────────────────┐│
+└──────┬──────┘     │  │  LinkedBlockingQueue │    │     Worker Thread       ││
+       │            │  │    (bufferSize)      │───▶│  - drainTo(batch)       ││
+       │  offer()   │  │                      │    │  - batch write to file  ││
+       │  (즉시)    │  │  ┌───┬───┬───┬───┐  │    │  - flush()              ││
+       │            │  │  │log│log│log│...│  │    │                         ││
+       │            │  │  └───┴───┴───┴───┘  │    └───────────┬─────────────┘│
+       │            │  └─────────────────────┘                │              │
+       │            └─────────────────────────────────────────┼──────────────┘
+       │                                                      │
+       ▼                                                      ▼
+   Response                                            ┌──────────────┐
+   (즉시 반환)                                         │  File I/O    │
+                                                       │  (비동기)    │
+                                                       └──────────────┘
+
+특징: 응답 지연 없음, 큐 초과 시 로그 유실 가능
+```
 
 ## 사용 예시
 
