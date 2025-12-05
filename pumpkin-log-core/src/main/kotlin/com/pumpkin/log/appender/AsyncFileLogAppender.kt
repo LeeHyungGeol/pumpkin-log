@@ -11,17 +11,6 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
-/**
- * 로그를 파일에 JSONL 형식으로 비동기 기록하는 Appender.
- *
- * 별도의 Worker Thread가 큐에서 로그를 꺼내 배치로 파일에 기록합니다.
- * 호출 스레드는 큐에 offer만 하고 즉시 반환되어 응답 지연이 최소화됩니다.
- *
- * @param filePath 로그 파일 경로 (null이면 기본 경로 사용, `{pid}` 플레이스홀더 지원)
- * @param bufferSize 큐 버퍼 크기 (기본값: 10,000)
- * @param batchSize 한 번에 파일에 쓰는 로그 수 (기본값: 100)
- * @see FileLogAppender 저트래픽 환경을 위한 동기 구현
- */
 class AsyncFileLogAppender(
     filePath: String? = null,
     private val bufferSize: Int = DEFAULT_BUFFER_SIZE,
@@ -38,16 +27,10 @@ class AsyncFileLogAppender(
     private val _droppedCount = AtomicLong(0)
     private val _writtenCount = AtomicLong(0)
 
-    /** 큐 초과로 유실된 로그 수 */
     val droppedCount: Long get() = _droppedCount.get()
-
-    /** 파일에 성공적으로 기록된 로그 수 */
     val writtenCount: Long get() = _writtenCount.get()
 
-    /** 로그 유실 시 호출되는 콜백 */
     var onDropped: ((HttpLog) -> Unit)? = null
-
-    /** 런타임 오류 발생 시 호출되는 콜백 */
     var onError: ((Throwable) -> Unit)? = null
 
     init {
@@ -133,12 +116,6 @@ class AsyncFileLogAppender(
         Thread.sleep(ERROR_RETRY_DELAY_MS)
     }
 
-    /**
-     * Worker Thread를 종료하고 리소스를 정리합니다.
-     *
-     * 최대 5초간 Worker Thread의 종료를 대기하며,
-     * 시간 내 종료되지 않으면 interrupt를 발생시킵니다.
-     */
     fun shutdown() {
         if (!running.compareAndSet(true, false)) return
 
@@ -151,10 +128,7 @@ class AsyncFileLogAppender(
     override fun close() = shutdown()
 
     companion object {
-        /** 기본 큐 버퍼 크기 */
         const val DEFAULT_BUFFER_SIZE = 10_000
-
-        /** 기본 배치 쓰기 크기 */
         const val DEFAULT_BATCH_SIZE = 100
 
         private const val POLL_TIMEOUT_MS = 100L

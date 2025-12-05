@@ -9,14 +9,6 @@ import jakarta.servlet.http.HttpServletResponse
 import org.springframework.util.AntPathMatcher
 import org.springframework.web.filter.OncePerRequestFilter
 
-/**
- * HTTP 요청을 가로채서 접근 로그를 기록하는 서블릿 필터.
- *
- * [OncePerRequestFilter]를 상속하여 forward/include 시 중복 실행을 방지합니다.
- *
- * @param accessLogger 로그를 기록할 AccessLogger
- * @param properties SDK 설정 (경로 제외 패턴 등)
- */
 class AccessLogFilter(
     private val accessLogger: AccessLogger,
     private val properties: PumpkinLogProperties
