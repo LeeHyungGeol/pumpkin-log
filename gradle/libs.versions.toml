@@ -15,7 +15,6 @@ junit = "5.10.2"
 mockk = "1.13.10"
 assertj = "3.25.3"
 awaitility = "4.2.0"
-reactor-test = "3.6.4"
 
 [libraries]
 # Jackson
@@ -24,14 +23,12 @@ jackson-datatype-jsr310 = { module = "com.fasterxml.jackson.datatype:jackson-dat
 
 # Spring Boot (버전 없음 - dependency-management가 관리)
 spring-boot-starter-web = { module = "org.springframework.boot:spring-boot-starter-web" }
-spring-boot-starter-webflux = { module = "org.springframework.boot:spring-boot-starter-webflux" }
 spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
 spring-boot-autoconfigure = { module = "org.springframework.boot:spring-boot-autoconfigure" }
 spring-boot-configuration-processor = { module = "org.springframework.boot:spring-boot-configuration-processor" }
 
 # Spring Boot (버전 명시 - library 모듈용)
 spring-boot-starter-web-versioned = { module = "org.springframework.boot:spring-boot-starter-web", version.ref = "spring-boot" }
-spring-boot-starter-webflux-versioned = { module = "org.springframework.boot:spring-boot-starter-webflux", version.ref = "spring-boot" }
 spring-boot-starter-test-versioned = { module = "org.springframework.boot:spring-boot-starter-test", version.ref = "spring-boot" }
 spring-boot-autoconfigure-versioned = { module = "org.springframework.boot:spring-boot-autoconfigure", version.ref = "spring-boot" }
 spring-boot-configuration-processor-versioned = { module = "org.springframework.boot:spring-boot-configuration-processor", version.ref = "spring-boot" }
@@ -41,7 +38,6 @@ junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "jun
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertj" }
 awaitility-kotlin = { module = "org.awaitility:awaitility-kotlin", version.ref = "awaitility" }
-reactor-test = { module = "io.projectreactor:reactor-test", version.ref = "reactor-test" }
 
 [bundles]
 # 테스트 공통 의존성

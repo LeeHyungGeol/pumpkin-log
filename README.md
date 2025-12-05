@@ -132,18 +132,17 @@ pumpkin:
 │                              pumpkin-log                                     │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│  ┌─────────────────────┐     ┌─────────────────────┐                       │
-│  │   demo-server-mvc   │     │ demo-server-webflux │   (데모/테스트용)      │
-│  └──────────┬──────────┘     └──────────┬──────────┘                       │
-│             │                           │                                   │
-│             ▼                           ▼                                   │
-│  ┌─────────────────────┐     ┌─────────────────────┐                       │
-│  │pumpkin-log-spring-  │     │pumpkin-log-spring-  │   (Spring 통합)       │
-│  │        mvc          │     │      webflux        │                       │
-│  └──────────┬──────────┘     └──────────┬──────────┘                       │
-│             │                           │                                   │
-│             └───────────┬───────────────┘                                   │
-│                         ▼                                                   │
+│            ┌─────────────────────┐                                          │
+│            │   demo-server-mvc   │   (데모/테스트용)                         │
+│            └──────────┬──────────┘                                          │
+│                       │                                                     │
+│                       ▼                                                     │
+│            ┌─────────────────────┐                                          │
+│            │pumpkin-log-spring-  │   (Spring 통합)                          │
+│            │        mvc          │                                          │
+│            └──────────┬──────────┘                                          │
+│                       │                                                     │
+│                       ▼                                                     │
 │            ┌────────────────────────┐                                       │
 │            │    pumpkin-log-core    │   (순수 Kotlin, Spring 의존 X)        │
 │            │                        │                                       │
@@ -155,7 +154,7 @@ pumpkin:
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 
-의존성 방향: demo-server → spring-mvc/webflux → core (단방향)
+의존성 방향: demo-server-mvc → spring-mvc → core (단방향)
 ```
 
 ### 요청 처리 흐름
@@ -461,9 +460,7 @@ tail -f /tmp/log.*.jsonl
 |------|------|--------------|
 | `pumpkin-log-core` | 핵심 로깅 로직 (HttpLog, Appender, Logger) | X |
 | `pumpkin-log-spring-mvc` | Spring WebMVC Filter, AutoConfiguration | O |
-| `pumpkin-log-spring-webflux` | Spring WebFlux Filter (미구현) | O |
 | `demo-server-mvc` | WebMVC 데모 서버 | O |
-| `demo-server-webflux` | WebFlux 데모 서버 (미구현) | O |
 
 ### 새 Appender 추가하기
 
