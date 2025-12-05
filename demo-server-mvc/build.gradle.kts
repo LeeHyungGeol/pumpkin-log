@@ -1,24 +1,9 @@
+// Spring WebMVC 데모 서버
+
 plugins {
-    kotlin("jvm") version "1.9.25"
-    kotlin("plugin.spring") version "1.9.25"
-    id("org.springframework.boot") version "3.4.12"
-    id("io.spring.dependency-management") version "1.1.7"
-}
-
-java {
-    sourceCompatibility = JavaVersion.VERSION_21
-    targetCompatibility = JavaVersion.VERSION_21
-}
-
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-    kotlinOptions {
-        freeCompilerArgs = listOf("-Xjsr305=strict")
-        jvmTarget = "21"
-    }
-}
-
-tasks.withType<Test> {
-    useJUnitPlatform()
+    alias(libs.plugins.kotlin.spring)
+    alias(libs.plugins.spring.boot)
+    alias(libs.plugins.spring.dependency.management)
 }
 
 dependencies {
@@ -26,10 +11,10 @@ dependencies {
     implementation(project(":pumpkin-log-spring-mvc"))
 
     // Spring Web
-    implementation("org.springframework.boot:spring-boot-starter-web")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
+    implementation(libs.spring.boot.starter.web)
+    implementation(libs.jackson.module.kotlin)
 
     // 테스트
-    testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testImplementation("org.awaitility:awaitility-kotlin:4.2.0")
+    testImplementation(libs.spring.boot.starter.test)
+    testImplementation(libs.awaitility.kotlin)
 }
