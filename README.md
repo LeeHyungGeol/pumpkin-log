@@ -129,22 +129,22 @@ pumpkin:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                              pumpkin-log                                     │
+│                              pumpkin-log                                    │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │            ┌─────────────────────┐                                          │
-│            │   demo-server-mvc   │   (데모/테스트용)                         │
+│            │   demo-server-mvc   │   (데모/테스트용)                           │
 │            └──────────┬──────────┘                                          │
 │                       │                                                     │
 │                       ▼                                                     │
 │            ┌─────────────────────┐                                          │
-│            │pumpkin-log-spring-  │   (Spring 통합)                          │
+│            │pumpkin-log-spring-  │   (Spring 통합)                           │
 │            │        mvc          │                                          │
 │            └──────────┬──────────┘                                          │
 │                       │                                                     │
 │                       ▼                                                     │
 │            ┌────────────────────────┐                                       │
-│            │    pumpkin-log-core    │   (순수 Kotlin, Spring 의존 X)        │
+│            │    pumpkin-log-core    │   (순수 Kotlin, Spring 의존 X)          │
 │            │                        │                                       │
 │            │  - HttpLog             │                                       │
 │            │  - LogAppender         │                                       │
@@ -161,43 +161,43 @@ pumpkin:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                              HTTP Request                                    │
+│                              HTTP Request                                   │
 └─────────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           AccessLogFilter                                    │
-│  (OncePerRequestFilter)                                                      │
+│                           AccessLogFilter                                   │
+│  (OncePerRequestFilter)                                                     │
 │                                                                             │
-│  1. 경로 제외 체크 → 제외 대상이면 로그 없이 통과                           │
+│  1. 경로 제외 체크 → 제외 대상이면 로그 없이 통과                                     │
 │  2. LogContextHolder.init()                                                 │
-│  3. startTime 기록                                                          │
-│  4. chain.doFilter() → Controller 실행                                      │
-│  5. finally: duration 계산 → AccessLogger.log() → LogContextHolder.clear() │
+│  3. startTime 기록                                                           │
+│  4. chain.doFilter() → Controller 실행                                       │
+│  5. finally: duration 계산 → AccessLogger.log() → LogContextHolder.clear()   │
 └─────────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                              Controller                                      │
+│                              Controller                                     │
 │                                                                             │
-│  - 비즈니스 로직 처리                                                        │
-│  - LogContextHolder.put("key", value) 로 extra 데이터 추가                  │
+│  - 비즈니스 로직 처리                                                            │
+│  - LogContextHolder.put("key", value) 로 extra 데이터 추가                      │
 └─────────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                             AccessLogger                                     │
+│                             AccessLogger                                    │
 │                                                                             │
-│  - HttpLog 객체 생성 (요청 정보 + extra 데이터)                              │
-│  - 등록된 모든 Appender에 dispatch                                           │
+│  - HttpLog 객체 생성 (요청 정보 + extra 데이터)                                   │
+│  - 등록된 모든 Appender에 dispatch                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
                                     │
                     ┌───────────────┴───────────────┐
                     ▼                               ▼
 ┌───────────────────────────────────┐   ┌───────────────────────────────────┐
-│      ConsoleLogAppender           │   │   FileLogAppender (동기)          │
-│                                   │   │   AsyncFileLogAppender (비동기)   │
-│  - stdout에 JSON 출력             │   │  - 파일에 JSONL 출력              │
+│      ConsoleLogAppender           │   │   FileLogAppender (동기)           │
+│                                   │   │   AsyncFileLogAppender (비동기)     │
+│  - stdout에 JSON 출력               │   │  - 파일에 JSONL 출력                 │
 └───────────────────────────────────┘   └───────────────────────────────────┘
 ```
 
@@ -234,13 +234,13 @@ pumpkin:
 
 **비동기 모드 (AsyncFileLogAppender)**
 ```
-┌─────────────┐     ┌─────────────────────────────────────────────────────────┐
-│ HTTP Thread │────▶│              AsyncFileLogAppender                        │
+┌─────────────┐     ┌────────────────────────────────────────────────────────┐
+│ HTTP Thread │────▶│              AsyncFileLogAppender                      │
 │  (Request)  │     │  ┌─────────────────────┐    ┌─────────────────────────┐│
-└──────┬──────┘     │  │  LinkedBlockingQueue │    │     Worker Thread       ││
-       │            │  │    (bufferSize)      │───▶│  - drainTo(batch)       ││
-       │  offer()   │  │                      │    │  - batch write to file  ││
-       │  (즉시)    │  │  ┌───┬───┬───┬───┐  │    │  - flush()              ││
+└──────┬──────┘     │  │  LinkedBlockingQueue│    │     Worker Thread       ││
+       │            │  │    (bufferSize)     │───▶│  - drainTo(batch)       ││
+       │  offer()   │  │                     │    │  - batch write to file  ││
+       │  (즉시)     │  │  ┌───┬───┬───┬───┐  │    │  - flush()              ││
        │            │  │  │log│log│log│...│  │    │                         ││
        │            │  │  └───┴───┴───┴───┘  │    └───────────┬─────────────┘│
        │            │  └─────────────────────┘                │              │
@@ -248,8 +248,8 @@ pumpkin:
        │                                                      │
        ▼                                                      ▼
    Response                                            ┌──────────────┐
-   (즉시 반환)                                         │  File I/O    │
-                                                       │  (비동기)    │
+   (즉시 반환)                                           │  File I/O    │
+                                                       │  (비동기)      │
                                                        └──────────────┘
 
 특징: 응답 지연 없음, 큐 초과 시 로그 유실 가능
@@ -344,6 +344,7 @@ pumpkin:
 ```
 
 **buffer-size 선택 가이드:**
+
 | 트래픽 | buffer-size | 메모리 사용 |
 |-------|-------------|------------|
 | 저트래픽 | 1,000 | ~300KB |
@@ -386,6 +387,34 @@ pumpkin-log/
         └── controller/
             └── SampleController.kt       # 데모 API
 ```
+
+## 지원 프레임워크
+
+- Spring WebMVC ✅
+
+### 미지원 (향후 확장 가능)
+
+- Spring WebFlux - Reactor Context 기반 별도 구현 필요
+
+## 성능 특성
+
+성능 테스트 결과 (`AppenderPerformanceTest` 기준):
+
+| 모드 | 처리량 | 비고 |
+|------|--------|------|
+| 동기 (FileLogAppender) | ~37,000 logs/sec | 파일 I/O 병목 |
+| 비동기 (AsyncFileLogAppender) | ~800,000 logs/sec | 약 21배 향상 |
+
+**동시성 처리 성능:**
+
+| 동시 스레드 | 총 로그 | 처리량 | Drop |
+|------------|---------|--------|------|
+| 10 | 100,000 | ~200,000 logs/sec | 0 |
+| 50 | 500,000 | ~900,000 logs/sec | 0 |
+| 100+ | 1,000,000+ | ~1,500,000+ logs/sec | 발생 가능 |
+
+- 50개 동시 스레드까지 drop 없이 처리 가능 (buffer-size 500,000 기준)
+- buffer-size 10,000 (기본값)에서 대부분의 실환경 충분
 
 ## 기술 스택
 
