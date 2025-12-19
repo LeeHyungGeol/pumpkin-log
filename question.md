@@ -3285,6 +3285,120 @@ Spring MVC     WebFlux        gRPC
 
 ---
 
+### 추가 질문: pumpkin-log-core만으로 Rails 같은 다른 프레임워크도 지원할 수 있나요?
+
+**Q:** pumpkin-log-core만으로도 Rails와 같은 다른 프레임워크를 지원하게 만들 수 있나요? Rails도 지원하려면 아예 Ruby/Ruby on Rails를 사용하여 과제를 진행해야 하나요?
+
+**A:**
+
+## 결론: pumpkin-log-core는 Rails를 지원할 수 없습니다
+
+### 이유: 런타임이 다름
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  JVM 세계 (Java/Kotlin)                                      │
+│                                                             │
+│  pumpkin-log-core (Kotlin)                                  │
+│       ↑           ↑           ↑           ↑                 │
+│  Spring MVC    WebFlux     Ktor      gRPC-Java              │
+│  (Java)        (Java)     (Kotlin)   (Java)                 │
+│                                                             │
+│  ✅ 모두 JVM 위에서 실행 → 같은 라이브러리 공유 가능           │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│  Ruby 세계                                                   │
+│                                                             │
+│  Rails, Sinatra, Hanami 등                                  │
+│                                                             │
+│  ❌ Ruby 런타임 위에서 실행 → Kotlin 코드 사용 불가           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### pumpkin-log-core가 지원 가능한 프레임워크
+
+| 프레임워크 | 언어 | 런타임 | 지원 가능? |
+|-----------|------|--------|-----------|
+| Spring MVC | Java/Kotlin | JVM | ✅ |
+| Spring WebFlux | Java/Kotlin | JVM | ✅ |
+| Ktor | Kotlin | JVM | ✅ |
+| Micronaut | Java/Kotlin | JVM | ✅ |
+| Quarkus | Java/Kotlin | JVM | ✅ |
+| gRPC-Java | Java/Kotlin | JVM | ✅ |
+| Vert.x | Java/Kotlin | JVM | ✅ |
+| **Rails** | Ruby | Ruby VM | ❌ |
+| **Django** | Python | Python VM | ❌ |
+| **Express** | JavaScript | Node.js | ❌ |
+| **Go Fiber** | Go | Go Runtime | ❌ |
+
+### Rails를 지원하려면?
+
+**완전히 새로운 Ruby 라이브러리를 작성해야 합니다:**
+
+```ruby
+# Ruby로 새로 작성해야 함
+# pumpkin-log-rails/lib/pumpkin_log.rb
+
+module PumpkinLog
+  class HttpLog
+    attr_accessor :type, :user_agent, :duration, :http_status_code,
+                  :http_method, :http_path, :http_query, :extra, :timestamp
+
+    def to_json
+      # JSON 직렬화
+    end
+  end
+
+  class Middleware
+    def initialize(app)
+      @app = app
+    end
+
+    def call(env)
+      start_time = Time.now
+      status, headers, response = @app.call(env)
+      duration = ((Time.now - start_time) * 1000).to_i
+
+      # 로그 기록
+      log = HttpLog.new(...)
+      Logger.append(log)
+
+      [status, headers, response]
+    end
+  end
+end
+```
+
+### 다중 언어 로깅 SDK의 실제 사례
+
+**Datadog, Sentry 같은 회사들:**
+
+```
+datadog-agent/
+├── dd-trace-java/      # Java/Kotlin용 (JVM)
+├── dd-trace-rb/        # Ruby용
+├── dd-trace-py/        # Python용
+├── dd-trace-go/        # Go용
+└── dd-trace-js/        # Node.js용
+
+→ 각 언어별로 완전히 별도의 라이브러리 구현
+→ 같은 JSON 스키마/프로토콜만 공유
+```
+
+### 요약
+
+| 질문 | 답변 |
+|------|------|
+| pumpkin-log-core로 Rails 지원 가능? | ❌ 불가능 (런타임이 다름) |
+| Rails 지원하려면? | Ruby로 새로 작성해야 함 |
+| 공유 가능한 것 | JSON 스키마, 설계 철학, 로그 포맷 |
+| 공유 불가능한 것 | Kotlin 코드 자체 |
+
+**핵심:** "프레임워크 독립적"은 **같은 런타임(JVM) 내에서**의 이야기입니다. 다른 언어/런타임은 별도 구현이 필요합니다.
+
+---
+
 ### 추가 질문: 왜 Awaitility를 선택했나요?
 
 **Q:** 비동기 테스트에서 `await().atMost(Duration.ofSeconds(2)).untilAsserted {}`를 사용하셨는데, 왜 Awaitility를 선택하셨나요? 다른 방법도 있을 텐데요.
