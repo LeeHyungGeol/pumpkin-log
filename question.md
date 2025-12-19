@@ -151,6 +151,69 @@ implementation("org.springframework.boot:spring-boot-starter-web:3.5.0")
 
 **한 줄 요약:** `spring-dependency-management` 플러그인이 없으면 Gradle이 어떤 버전을 가져올지 모르기 때문에 버전을 명시해야 합니다.
 
+**추가 질문: libs.versions.toml에 플러그인을 선언하면 그게 버전 관리를 하는 건가요?**
+
+아니요, 두 가지는 다른 역할입니다.
+
+**1. `libs.versions.toml` - 플러그인/라이브러리 참조용 별칭**
+
+```toml
+# libs.versions.toml
+[plugins]
+spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "spring-dependency-management" }
+```
+
+이건 그냥 **"이 플러그인을 `libs.plugins.spring.dependency.management`라는 이름으로 부르겠다"**는 선언입니다.
+
+**2. `io.spring.dependency-management` 플러그인 - 실제 버전 관리 수행**
+
+```kotlin
+// demo-server-mvc/build.gradle.kts
+plugins {
+    alias(libs.plugins.spring.dependency.management)  // 플러그인 적용
+}
+```
+
+이 플러그인이 **실제로 빌드 시점에** Spring Boot BOM을 가져와서 버전을 관리합니다.
+
+**흐름 정리:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ libs.versions.toml                                          │
+│                                                             │
+│ spring-dependency-management 플러그인의 "별칭"만 정의        │
+│ (실제 버전 관리 X, 그냥 이름표)                               │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│ demo-server-mvc/build.gradle.kts                            │
+│                                                             │
+│ plugins {                                                   │
+│     alias(libs.plugins.spring.dependency.management)        │
+│ }                                                           │
+│                                                             │
+│ → 플러그인이 "적용"됨                                         │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 플러그인이 빌드 시점에 하는 일                                 │
+│                                                             │
+│ 1. Maven Central에서 spring-boot-dependencies BOM 다운로드   │
+│ 2. BOM 안의 버전 정보를 읽음                                  │
+│ 3. 프로젝트의 의존성에 버전이 없으면 BOM에서 찾아서 채움        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**비유:**
+- `libs.versions.toml` = "전화번호부" (이름 → 번호 매핑)
+- 플러그인 적용 = "전화 거는 것" (전화번호부에서 번호 찾아서 실제로 전화함)
+- 플러그인 동작 = "전화 받은 사람이 일하는 것" (실제로 버전 관리 작업 수행)
+
+**결론:** `libs.versions.toml`은 플러그인의 **이름과 버전만 정의**하고, 실제 버전 관리는 **플러그인이 적용된 후 빌드 시점에** 수행됩니다.
+
 ---
 
 ### 질문 1-3: compileOnly vs implementation
