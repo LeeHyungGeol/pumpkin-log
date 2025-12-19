@@ -2187,6 +2187,92 @@ onDropped = { log ->
 
 ### 질문 4-1: MockK 기본 사용법
 
+**추가 질문: 왜 MockK를 사용했나요? 다른 Mocking 라이브러리도 있을 텐데요.**
+
+**A:**
+
+## MockK vs 대안들 비교
+
+### 1. Mockito (Java 표준)
+
+```kotlin
+// Mockito 사용 시
+val accessLogger = mock(AccessLogger::class.java)
+`when`(accessLogger.log(any(), any(), any())).thenReturn(Unit)
+
+// 문제점
+verify(accessLogger).log(
+    eq("Mozilla/5.0"),  // eq() 필요
+    any(),
+    any()
+)
+```
+
+**Mockito의 Kotlin 호환 문제:**
+- `when`이 Kotlin 예약어 → 백틱 필요 `` `when` ``
+- `any()`가 non-null 타입에서 NPE 발생 가능
+- final 클래스/메서드 mock 불가 (Kotlin은 기본이 final)
+- 코루틴 지원 미흡
+
+### 2. Mockito-Kotlin (Mockito Kotlin 래퍼)
+
+```kotlin
+// Mockito-Kotlin 사용 시
+val accessLogger = mock<AccessLogger>()
+whenever(accessLogger.log(any(), any())).thenReturn(Unit)
+```
+
+**개선되었지만:**
+- 여전히 Mockito 기반이라 final 클래스 문제 있음
+- `mockito-inline` 추가 필요
+- 코루틴 suspend 함수 mock 불편
+
+### 3. MockK (Kotlin Native)
+
+```kotlin
+// MockK 사용 시
+val accessLogger = mockk<AccessLogger>(relaxed = true)
+
+verify {
+    accessLogger.log(
+        userAgent = "Mozilla/5.0",
+        method = any(),
+        path = any()
+    )
+}
+```
+
+**MockK의 장점:**
+- **Kotlin 전용 설계**: 언어 특성에 최적화
+- **final 클래스 기본 지원**: 추가 설정 불필요
+- **named parameter 지원**: `userAgent = "..."` 형태로 가독성 좋음
+- **코루틴 지원**: `coEvery`, `coVerify`로 suspend 함수 테스트
+- **relaxed mock**: 기본값 자동 반환으로 boilerplate 감소
+
+## 비교 표
+
+| 항목 | Mockito | Mockito-Kotlin | MockK |
+|------|---------|----------------|-------|
+| **Kotlin 친화성** | ❌ 낮음 | 🔶 중간 | ✅ 높음 |
+| **final 클래스 mock** | ❌ 추가 설정 | ❌ 추가 설정 | ✅ 기본 지원 |
+| **코루틴 지원** | ❌ 미흡 | 🔶 제한적 | ✅ 완벽 |
+| **DSL 가독성** | 🔶 중간 | 🔶 중간 | ✅ 좋음 |
+| **named parameter** | ❌ 불가 | ❌ 불가 | ✅ 지원 |
+
+## 결론
+
+**Kotlin 프로젝트에서는 MockK가 사실상 표준입니다.**
+
+```kotlin
+// MockK의 직관적인 문법
+every { repository.findById(any()) } returns user
+verify(exactly = 1) { repository.save(match { it.name == "test" }) }
+
+// Kotlin 스타일에 자연스럽게 녹아듦
+```
+
+---
+
 **Q:**
 ```kotlin
 @BeforeEach
