@@ -60,6 +60,97 @@ compileOnly(libs.spring.boot.starter.web.versioned)
 
 참고로 `pumpkin-log-core`는 Spring 의존성이 아예 없습니다.
 
+**추가 설명: `spring-dependency-management` 플러그인이 뭘 하나?**
+
+이 플러그인은 Spring Boot BOM(Bill of Materials)을 가져와서 **Spring 관련 의존성 버전을 자동으로 관리**합니다.
+
+```kotlin
+// 플러그인이 있으면 내부적으로 이렇게 동작:
+dependencyManagement {
+    imports {
+        mavenBom("org.springframework.boot:spring-boot-dependencies:3.4.12")
+    }
+}
+
+// 이 BOM 안에 이런 정보가 있음:
+// spring-boot-starter-web → 3.4.12
+// jackson-databind → 2.17.0
+// logback → 1.4.x
+// ... 수백 개의 의존성 버전이 미리 정의됨
+```
+
+**결과:**
+```kotlin
+// 버전을 안 써도 자동으로 3.4.12가 적용됨
+implementation("org.springframework.boot:spring-boot-starter-web")
+```
+
+**왜 라이브러리 모듈에는 이 플러그인을 안 쓰나?**
+
+만약 pumpkin-log-spring-mvc에 이 플러그인을 적용하면:
+
+```kotlin
+plugins {
+    alias(libs.plugins.spring.dependency.management)  // 적용!
+}
+
+dependencies {
+    implementation(libs.spring.boot.starter.web)  // 버전 없이
+}
+```
+
+빌드된 JAR의 pom.xml:
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+    <version>3.4.12</version>  <!-- 버전이 고정됨! -->
+</dependency>
+```
+
+사용자 프로젝트에서:
+```kotlin
+// 사용자는 Spring Boot 3.5.0을 사용 중
+implementation("com.pumpkin:pumpkin-log-spring-mvc:1.0.0")
+implementation("org.springframework.boot:spring-boot-starter-web:3.5.0")
+
+// 결과: 3.4.12 vs 3.5.0 버전 충돌!
+```
+
+**compileOnly를 쓰면?**
+
+```kotlin
+// pumpkin-log-spring-mvc
+compileOnly(libs.spring.boot.starter.web.versioned)  // 3.4.12로 컴파일
+```
+
+빌드된 JAR의 pom.xml:
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+    <version>3.4.12</version>
+    <scope>provided</scope>  <!-- 런타임에 포함 안 됨! -->
+</dependency>
+```
+
+사용자 프로젝트에서:
+```kotlin
+implementation("com.pumpkin:pumpkin-log-spring-mvc:1.0.0")
+implementation("org.springframework.boot:spring-boot-starter-web:3.5.0")
+
+// pumpkin-log가 3.5.0 버전을 그대로 사용 → 충돌 없음!
+```
+
+**정리:**
+
+| 모듈 | 역할 | 플러그인 | 의존성 선언 | 이유 |
+|------|------|---------|-----------|------|
+| **demo-server-mvc** | 애플리케이션 | `spring-dependency-management` ✅ | 버전 없이 | 플러그인이 버전 관리 |
+| **pumpkin-log-spring-mvc** | 라이브러리 | 플러그인 없음 ❌ | 버전 명시 | 플러그인 없으면 버전 필수 |
+
+**한 줄 요약:** `spring-dependency-management` 플러그인이 없으면 Gradle이 어떤 버전을 가져올지 모르기 때문에 버전을 명시해야 합니다.
+
 ---
 
 ### 질문 1-3: compileOnly vs implementation
